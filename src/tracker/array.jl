@@ -105,31 +105,84 @@ function back(::typeof(vcat), Δ, xs...)
   end
 end
 
-Base.cat(dims, a::TrackedVector, b::TrackedVector)  = track(cat, dims, a, b)
-Base.cat(dims, a::TrackedVector, b::AbstractVector) = track(cat, dims, a, b)
-Base.cat(dims, a::AbstractVector, b::TrackedVector) = track(cat, dims, a, b)
+Base.cat(dims, a::TrackedVector, b::TrackedVector)  = track(cat, dims, a...)
+Base.cat(dims, a::TrackedVector, b::AbstractVector) = track(cat, dims, a...)
+Base.cat(dims, a::AbstractVector, b::TrackedVector) = track(cat, dims, a...)
 
-Base.cat(dims, a::TrackedVecOrMat, b::TrackedVecOrMat)  = track(cat, dims, a, b)
-Base.cat(dims, a::TrackedVecOrMat, b::AbstractVecOrMat) = track(cat, dims, a, b)
-Base.cat(dims, a::AbstractVecOrMat, b::TrackedVecOrMat) = track(cat, dims, a, b)
+Base.cat(dims, a::TrackedVecOrMat, b::TrackedVecOrMat)  = track(cat, dims, a...)
+Base.cat(dims, a::TrackedVecOrMat, b::AbstractVecOrMat) = track(cat, dims, a...)
+Base.cat(dims, a::AbstractVecOrMat, b::TrackedVecOrMat) = track(cat, dims, a...)
 
-Base.cat(dims, a::TrackedMatrix, b::TrackedMatrix)  = track(cat, dims, a, b)
-Base.cat(dims, a::TrackedMatrix, b::AbstractMatrix) = track(cat, dims, a, b)
-Base.cat(dims, a::AbstractMatrix, b::TrackedMatrix) = track(cat, dims, a, b)
+Base.cat(dims, a::TrackedMatrix, b::TrackedMatrix)  = track(cat, dims, a...)
+Base.cat(dims, a::TrackedMatrix, b::AbstractMatrix) = track(cat, dims, a...)
+Base.cat(dims, a::AbstractMatrix, b::TrackedMatrix) = track(cat, dims, a...)
 
-function back(::typeof(cat), Δ, dims, xs, ys)
-  dim_xs = 1:ndims(xs)
-  dim_ys = 1:ndims(ys)
+# function back(::typeof(cat), Δ, dims, xs, ys)
+#   dim_xs = 1:ndims(xs)
+#   dim_ys = 1:ndims(ys)
 
-  till_xs = ntuple((i -> i in dims ? (i in dim_xs ? size(xs,i) : 1) : 0), Val{ndims(Δ)})
-  till_ys = ntuple((i -> i in dims ? (i in dim_ys ? size(ys,i) : 1) : 0), Val{ndims(Δ)})
+#   till_xs = ntuple((i -> i in dims ? (i in dim_xs ? size(xs,i) : 1) : 0), Val{ndims(Δ)})
+#   till_ys = ntuple((i -> i in dims ? (i in dim_ys ? size(ys,i) : 1) : 0), Val{ndims(Δ)})
 
-  xs_in_Δ = ntuple(i -> till_xs[i] > 0 ? (1:till_xs[i]):Colon(), Val{ndims(Δ)})
-  ys_in_Δ = ntuple(i -> till_ys[i] > 0 ? (till_xs[i]+1:size(Δ,i)) : Colon(), Val{ndims(Δ)})
+#   xs_in_Δ = ntuple(i -> till_xs[i] > 0 ? (1:till_xs[i]):Colon(), Val{ndims(Δ)})
+#   ys_in_Δ = ntuple(i -> till_ys[i] > 0 ? (till_xs[i]+1:size(Δ,i)) : Colon(), Val{ndims(Δ)})
 
-  @back(xs, reshape(Δ[xs_in_Δ...],size(xs)))
-  @back(ys, reshape(Δ[ys_in_Δ...],size(ys)))
+#   @back(xs, reshape(Δ[xs_in_Δ...], size(xs)))
+#   @back(ys, reshape(Δ[ys_in_Δ...], size(ys)))
+# end
+
+function back(::typeof(cat), Δ, dims, xs...)
+  dim_xs = ntuple((i -> 1:ndims(xs[i])), length(xs))
+  println("size(Δ): ", size(Δ))
+  till = ntuple(j -> ntuple((i -> i in dims ? (i in dim_xs[j] ? size(xs[j],i) : 1) : 0), Val{ndims(Δ)}), length(xs))
+  println("till: ",till)
+  till_xs = Array{Any}(length(till))
+  till_xs[1] = till[1]
+  for i in 1:length(till)
+    println("i: ",i)
+    println("till[i]: ",till[i])
+    i != 1 ? till_xs[i] = till[i] .+ till_xs[i-1] : continue
+    println("till_xs[i]: ",till_xs[i])
+  end
+
+  println("\n\ntill_xs: ",till_xs)
+
+  # till_ys = ntuple((i -> i in dims ? (i in dim_ys ? size(ys,i) : 1) : 0), Val{ndims(Δ)})
+  # xs_in_Δ = ntuple((i -> i==1 ? ntuple(i -> till_xs[i] > 0 ? (1 : till_xs[i]) : Colon(), Val{ndims(Δ)}): ntuple(j -> till_xs[i][j] > 0 ? (till_xs[i-1][j]+1 : till_xs[i][j]) : Colon(), Val{ndims(Δ)})), length(till_xs))
+
+  xs_in_Δ = ntuple(j -> j==1 ? ntuple(i -> till_xs[j][i] > 0 ? (1:till_xs[j][i]):Colon(), Val{ndims(Δ)}) :  ntuple(i -> till_xs[j][i] > 0 ? (till_xs[j][i]+1 : till_xs[j][i]) : Colon(), Val{ndims(Δ)}),length(till_xs))
+  # ys_in_Δ = ntuple(i -> till_ys[i] > 0 ? (till_xs[i]+1:size(Δ,i)) : Colon(), Val{ndims(Δ)})
+
+  println("xs_in_Δ: ",xs_in_Δ)
+  println("xs: ",xs)
+
+  for i in 1:length(xs_in_Δ)
+    println("\n\nHere you go!\n")
+    println("xs_in_Δ[i] and xs_in_Δ[i]...", xs_in_Δ[i], (xs_in_Δ[i])...)
+    println("Δ[(xs_in_Δ[i])...]: ", Δ[(xs_in_Δ[i])...])
+    println("xs[i]: ", xs[i])
+    @back([xs[i]], reshape(Δ[(xs_in_Δ[i])...],size(xs[i])))
+  end
 end
+
+# function back(::typeof(cat), Δ, dims, xs...)
+#   dim_xs = ntuple((i -> 1:ndims(xs[i])), length(xs))
+
+#   till_xs = ntuple((i -> i in dims ? (i in dim_xs ? size(xs,i) : 1) : 0), Val{ndims(Δ)})
+
+
+#   # till_xs = ntuple(i -> 0, length(xs))
+#   # till_xs[1] = ntuple((i -> i in dims ? (i in dim_xs[1] ? size(xs,i) : 1) : 0), Val{ndims(Δ)})
+#   till = ntuple((i -> i == 1 ? ntuple((i -> i in dims ? (i in dim_xs[1] ? size(xs[1],i) : 1) : 0), Val{ndims(Δ)}) : ntuple((j -> j in dims ? (j in dim_xs[i] ? (size(xs[i],j) + till_xs[i-1]) : 1) : 0), Val{ndims(Δ)})), length(xs))
+
+
+#   # xs_in_Δ = ntuple(i -> till_xs[i] > 0 ? (1 : till_xs[i]) : Colon(), Val{ndims(Δ)})
+#   xs_in_Δ = ntuple((i -> i==1 ? ntuple(i -> till_xs[i] > 0 ? (1 : till_xs[i]) : Colon(), Val{ndims(Δ)}): ntuple(j -> till_xs[i][j] > 0 ? (till_xs[i-1][j]+1 : till_xs[i][j]) : Colon(), Val{ndims(Δ)})), length(till_xs))
+
+#   for i in 1:length(xs_in_Δ)
+#     @back(xs[i], reshape(Δ[xs_in_Δ[i]...],size(xs[i])))
+#   end
+# end
 
 Base.reshape(xs::TrackedArray, dims::Union{Colon,Int64}...) =
   track(reshape, xs, dims...)
