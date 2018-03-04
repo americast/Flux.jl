@@ -58,24 +58,31 @@ Tracked 2-element Array{Float64,1}:
   -0.00449443
 ```
 """
-struct Dense{F,S,T}
+struct Dense{F,S,T,UInt64}
   W::S
   b::T
   σ::F
+  m::UInt64
 end
 
-Dense(W, b) = Dense(W, b, identity)
+Dense(W, b) = Dense(W, b, identity, 1)
 
-function Dense(in::Integer, out::Integer, σ = identity;
-               initW = glorot_uniform, initb = zeros)
-  return Dense(param(initW(out, in)), param(initb(out)), σ)
+function Dense(in::Integer, out::Integer, σ = identity; initW = glorot_uniform, initb = zeros, maxout = 1)
+  return Dense((param(cat(3, [initW(out, in) for i in 1:maxout]...))), (param(cat(2, [initb(out) for i in 1:maxout]...))), σ, maxout)
 end
 
 treelike(Dense)
 
 function (a::Dense)(x)
+  @show "here1"
   W, b, σ = a.W, a.b, a.σ
-  @fix σ.(W*x .+ b)
+  @show "here2"
+  k = (ntuple(i -> W[:, :, i]*x .+ b[:, i], size(W,3)))
+  @show k
+  @show typeof(k)
+  output = cat(3, (ntuple(i -> W[:, :, i]*x .+ b[:, i], size(W,3)))...)
+  @show "here3"
+  @fix maximum(output, ndims(output))
 end
 
 function Base.show(io::IO, l::Dense)
