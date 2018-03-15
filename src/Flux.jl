@@ -10,7 +10,7 @@ using MacroTools: @forward
 export Chain, Dense, RNN, LSTM, GRU, Conv, Conv2D,
   Dropout, LayerNorm, BatchNorm,
   SGD, ADAM, Momentum, Nesterov, AMSGrad,
-  param, params, mapleaves, cpu, gpu
+  param, params, mapleaves, cpu, gpu, Maxout
 
 @reexport using NNlib
 using NNlib: @fix
